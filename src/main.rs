@@ -35,9 +35,9 @@ fn main() -> anyhow::Result<()> {
     let (tx_res, rx_res) = unbounded();
 
     thread::spawn(move || {
-        run_engine(rx_cmd, tx_res);
+        run_engine(rx_cmd, tx_res, args.dir);
     });
-    let mut app = App::new(args.dir, rx_res, tx_cmd, MAX_LIST_LENGTH);
+    let mut app = App::new(rx_res, tx_cmd, MAX_LIST_LENGTH);
 
     // setup terminal
     enable_raw_mode()?;

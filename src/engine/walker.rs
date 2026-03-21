@@ -4,18 +4,18 @@ use crossbeam_channel::Sender;
 use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use ignore::WalkBuilder;
+use crate::engine::score;
 
 pub fn search_disk(
     query: String,
     tx_res: Sender<Vec<String>>,
     kill_switch: Arc<AtomicBool>,
+    dir: String,
 ) {
     let matcher = SkimMatcherV2::default();
     let mut results: Vec<(i64, String)> = Vec::new();
 
-    // FIXME: Hardcoded home dir
-    let start_dir = dirs::home_dir().unwrap();
-    let walker = WalkBuilder::new(&start_dir)
+    let walker = WalkBuilder::new(&dir)
         .hidden(true)
         .parents(true)
         .ignore(true)
@@ -30,10 +30,16 @@ pub fn search_disk(
             if entry.file_type().map_or(false, |f| f.is_dir()) {
                 let path = entry.path().to_string_lossy().to_string();
 
-                if let Some(score) = matcher.fuzzy_match(&path, &query) {
-                    if score > 10 {
-                        results.push((score, path));
-                        results.sort_by(|a, b| b.0.cmp(&a.0));
+                if let Some(raw_score) = matcher.fuzzy_match(&path, &query) {
+                    let final_score = score::apply_heuristics(&path, raw_score);
+
+                    if final_score > 10 && !score::is_redundant(&path, final_score, &results){
+                        results.push((final_score, path));
+                        results.sort_unstable_by(|a, b| match b.0.cmp(&a.0) {
+                            std::cmp::Ordering::Equal => a.1.len().cmp(&b.1.len()),
+                            o => o,
+                        });
+                        
                         results.truncate(5);
                         let top_5: Vec<String> = results
                             .iter()

@@ -4,7 +4,6 @@ use tui_input::Input;
 use crate::engine::EngineCommand;
 
 pub struct App {
-    pub search_space : Option<String>,
     pub input: Input,
     pub results : Vec<String>,
     pub selected_i : usize,
@@ -15,9 +14,8 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(dir : Option<String>, rx_res: Receiver<Vec<String>>, tx_cmd: Sender<EngineCommand>,list_length: u16) -> Self {
+    pub fn new(rx_res: Receiver<Vec<String>>, tx_cmd: Sender<EngineCommand>,list_length: u16) -> Self {
         Self {
-            search_space : dir,
             input : Input::default(),
             results: Vec::with_capacity(list_length as usize),
             selected_i: 0,

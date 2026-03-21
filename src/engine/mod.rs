@@ -1,4 +1,5 @@
 mod walker;
+mod score;
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -12,7 +13,8 @@ pub enum EngineCommand {
 
 pub fn run_engine(
     rx_cmd : Receiver<EngineCommand>,
-    tx_result : Sender<Vec<String>>
+    tx_result : Sender<Vec<String>>,
+    search_space : Option<String>,
 ) {
     let mut current_kill_switch : Option<Arc<AtomicBool>> = None;
     loop {
@@ -35,8 +37,9 @@ pub fn run_engine(
                     current_kill_switch = Some(Arc::clone(&kill_switch));
 
                     let tx_res_clone = tx_result.clone();
+                    let dir = search_space.clone().unwrap_or_else(|| "./".to_string());
                     thread::spawn(move || {
-                        walker::search_disk(query, tx_res_clone, kill_switch);
+                        walker::search_disk(query, tx_res_clone, kill_switch, dir);
                     });
                 },
                 EngineCommand::Quit => {
