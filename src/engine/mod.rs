@@ -1,10 +1,10 @@
-mod walker;
 mod score;
+mod walker;
 
+use crossbeam_channel::{Receiver, Sender};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
-use crossbeam_channel::{Receiver, Sender};
 
 pub enum EngineCommand {
     Search(String),
@@ -12,11 +12,11 @@ pub enum EngineCommand {
 }
 
 pub fn run_engine(
-    rx_cmd : Receiver<EngineCommand>,
-    tx_result : Sender<Vec<String>>,
-    search_space : Option<String>,
+    rx_cmd: Receiver<EngineCommand>,
+    tx_result: Sender<Vec<String>>,
+    search_space: Option<String>,
 ) {
-    let mut current_kill_switch : Option<Arc<AtomicBool>> = None;
+    let mut current_kill_switch: Option<Arc<AtomicBool>> = None;
     loop {
         if let Ok(cmd) = rx_cmd.recv() {
             match cmd {
@@ -47,7 +47,7 @@ pub fn run_engine(
                     thread::spawn(move || {
                         walker::search_disk(query, tx_res_clone, kill_switch, dir);
                     });
-                },
+                }
                 EngineCommand::Quit => {
                     if let Some(ks) = current_kill_switch.take() {
                         ks.store(true, Ordering::Relaxed);

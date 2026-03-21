@@ -2,7 +2,7 @@ const DEPTH_PENALTY: i64 = 3;
 const CHILD_OVERRIDE_MARGIN: i64 = 25;
 const ACRONYM_BONUS: i64 = 15;
 
-pub fn apply_heuristics(path: &str, raw_score: i64, indices : &[usize]) -> i64 {
+pub fn apply_heuristics(path: &str, raw_score: i64, indices: &[usize]) -> i64 {
     let path_bytes = path.as_bytes();
 
     // bonus for a match at the boundary of an acronym
@@ -10,7 +10,7 @@ pub fn apply_heuristics(path: &str, raw_score: i64, indices : &[usize]) -> i64 {
     let last_index = path_bytes.len().saturating_sub(1);
 
     for &idx in indices {
-        if idx == 0 || idx == last_index{
+        if idx == 0 || idx == last_index {
             boundary_bonus += ACRONYM_BONUS;
         } else {
             let prev_char = path_bytes[idx - 1];
@@ -30,7 +30,7 @@ pub fn apply_heuristics(path: &str, raw_score: i64, indices : &[usize]) -> i64 {
 }
 
 pub fn is_redundant(path: &str, score: i64, current_results: &[(i64, String)]) -> bool {
-    for(existing_score, existing_path) in current_results {
+    for (existing_score, existing_path) in current_results {
         if path.starts_with(existing_path) {
             if score <= existing_score + CHILD_OVERRIDE_MARGIN {
                 return true;
