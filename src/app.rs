@@ -1,6 +1,8 @@
-use crate::Args;
+use crate::cli;
 use crate::engine::EngineCommand;
+use crate::tui::Tui;
 use crossbeam_channel::{Receiver, Sender};
+use crossterm::event;
 use tui_input::Input;
 
 pub struct App {
@@ -42,5 +44,35 @@ impl App {
         if self.selected_i < self.results.len().saturating_sub(1) {
             self.selected_i += 1;
         }
+    }
+
+    pub fn run_event_loop(&mut self, tui: &mut Tui) -> anyhow::Result<()> {
+        loop {
+            tui.terminal.draw(|f| cli::render::draw(f, self))?;
+
+            let mut received_new_res = false;
+            while let Ok(new_res) = self.rx_res.try_recv() {
+                self.results = new_res;
+
+                if self.selected_i >= self.results.len() {
+                    self.selected_i = self.results.len().saturating_sub(1);
+                }
+                received_new_res = true;
+            }
+
+            if received_new_res {
+                continue;
+            }
+
+            if event::poll(std::time::Duration::from_millis(50))? {
+                cli::events::handle_events(self)?;
+            }
+
+            if self.should_exit {
+                break;
+            }
+        }
+
+        Ok(())
     }
 }

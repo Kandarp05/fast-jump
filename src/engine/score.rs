@@ -23,7 +23,7 @@ pub fn apply_heuristics(path: &str, raw_score: i64, indices: &[usize]) -> i64 {
     // compute the depth of the path
     // More the depth, more the penalty
     let depth = path_bytes.iter().filter(|&&b| b == b'/').count() as i64;
-    let depth_penalty = (depth * DEPTH_PENALTY);
+    let depth_penalty = depth * DEPTH_PENALTY;
 
     // compute the final score and return it
     raw_score - depth_penalty + boundary_bonus

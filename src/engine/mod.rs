@@ -15,6 +15,7 @@ pub fn run_engine(
     rx_cmd: Receiver<EngineCommand>,
     tx_result: Sender<Vec<String>>,
     search_space: Option<String>,
+    max_list_size: u16,
 ) {
     let mut current_kill_switch: Option<Arc<AtomicBool>> = None;
     loop {
@@ -45,7 +46,7 @@ pub fn run_engine(
                     });
 
                     thread::spawn(move || {
-                        walker::search_disk(query, tx_res_clone, kill_switch, dir);
+                        walker::search_disk(query, tx_res_clone, kill_switch, dir, max_list_size);
                     });
                 }
                 EngineCommand::Quit => {

@@ -11,6 +11,7 @@ pub fn search_disk(
     tx_res: Sender<Vec<String>>,
     kill_switch: Arc<AtomicBool>,
     dir: String,
+    max_list_size: u16,
 ) {
     let matcher = SkimMatcherV2::default();
     let mut results: Vec<(i64, String)> = Vec::new();
@@ -40,7 +41,7 @@ pub fn search_disk(
                             o => o,
                         });
 
-                        results.truncate(5);
+                        results.truncate(max_list_size as usize);
                         let top_5: Vec<String> = results.iter().map(|(_, p)| p.clone()).collect();
 
                         let _ = tx_res.send(top_5);
