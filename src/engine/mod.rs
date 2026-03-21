@@ -35,9 +35,15 @@ pub fn run_engine(
                     // New kill switch for the new search
                     let kill_switch = Arc::new(AtomicBool::new(false));
                     current_kill_switch = Some(Arc::clone(&kill_switch));
-
                     let tx_res_clone = tx_result.clone();
-                    let dir = search_space.clone().unwrap_or_else(|| "./".to_string());
+
+                    // If no search space is provided, use the home directory
+                    let dir: String = search_space.clone().unwrap_or_else(|| {
+                        dirs::home_dir()
+                            .map(|p| p.to_string_lossy().to_string())
+                            .unwrap_or_else(|| ".".to_string())
+                    });
+
                     thread::spawn(move || {
                         walker::search_disk(query, tx_res_clone, kill_switch, dir);
                     });

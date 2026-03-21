@@ -30,8 +30,8 @@ pub fn search_disk(
             if entry.file_type().map_or(false, |f| f.is_dir()) {
                 let path = entry.path().to_string_lossy().to_string();
 
-                if let Some(raw_score) = matcher.fuzzy_match(&path, &query) {
-                    let final_score = score::apply_heuristics(&path, raw_score);
+                if let Some((raw_score, indices)) = matcher.fuzzy_indices(&path, &query) {
+                    let final_score = score::apply_heuristics(&path, raw_score, &indices);
 
                     if final_score > 10 && !score::is_redundant(&path, final_score, &results){
                         results.push((final_score, path));
@@ -39,7 +39,7 @@ pub fn search_disk(
                             std::cmp::Ordering::Equal => a.1.len().cmp(&b.1.len()),
                             o => o,
                         });
-                        
+
                         results.truncate(5);
                         let top_5: Vec<String> = results
                             .iter()

@@ -64,6 +64,8 @@ fn main() -> anyhow::Result<()> {
     
     if let Some(path) = app.final_selection {
         println!("{}", path);
+        let temp_file = std::env::temp_dir().join("fj_target");
+        let _ = std::fs::write(&temp_file, path);
     }
     Ok(())
 }
