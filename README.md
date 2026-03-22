@@ -35,10 +35,10 @@ Add the following function to your `~/.bashrc` or `~/.zshrc`:
 function fj() {
     # Path to the compiled binary
     local binary_path="$HOME/my-projects/fast-jump/target/release/fj"
-    
+
     # Run fj
     "$binary_path" "$@"
-    
+
     # Path to the temp file used by fj
     local temp_file="/tmp/fj_target" # Adjust if your TMPDIR is different
 
@@ -56,7 +56,7 @@ function fj() {
 Now reload your shell (`source ~/.zshrc`) and simply run to search in your home directory:
 
 ```bash
-fj 
+fj
 ```
 
 Or provide a starting directory:

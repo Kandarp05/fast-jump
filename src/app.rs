@@ -3,7 +3,7 @@ use crossterm::event;
 use tui_input::Input;
 
 use crate::cli;
-use crate::engine::EngineCommand;
+use crate::engine::{EngineCommand, EngineResult};
 use crate::tui::Tui;
 
 pub struct App {
@@ -12,13 +12,13 @@ pub struct App {
     pub selected_i: usize,
     pub should_exit: bool,
     pub final_selection: Option<String>,
-    pub rx_res: Receiver<Vec<String>>,
+    pub rx_res: Receiver<EngineResult>,
     pub tx_cmd: Sender<EngineCommand>,
 }
 
 impl App {
     pub fn new(
-        rx_res: Receiver<Vec<String>>,
+        rx_res: Receiver<EngineResult>,
         tx_cmd: Sender<EngineCommand>,
         list_length: u16,
     ) -> Self {
@@ -53,11 +53,14 @@ impl App {
 
             let mut received_new_res = false;
             while let Ok(new_res) = self.rx_res.try_recv() {
-                self.results = new_res;
-
-                if self.selected_i >= self.results.len() {
-                    self.selected_i = self.results.len().saturating_sub(1);
+                match new_res {
+                    EngineResult::Update(res) => {
+                        self.results = res;
+                    }
+                    EngineResult::Done => {}
                 }
+
+                self.clamp_selection();
                 received_new_res = true;
             }
 
@@ -75,5 +78,11 @@ impl App {
         }
 
         Ok(())
+    }
+
+    fn clamp_selection(&mut self) {
+        if self.selected_i >= self.results.len() {
+            self.selected_i = self.results.len().saturating_sub(1);
+        }
     }
 }

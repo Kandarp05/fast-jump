@@ -12,9 +12,14 @@ pub enum EngineCommand {
     Quit,
 }
 
+pub enum EngineResult {
+    Update(Vec<String>),
+    Done,
+}
+
 pub fn run_engine(
     rx_cmd: Receiver<EngineCommand>,
-    tx_result: Sender<Vec<String>>,
+    tx_result: Sender<EngineResult>,
     search_space: Option<String>,
     max_list_size: u16,
 ) {
@@ -27,7 +32,7 @@ pub fn run_engine(
 
                     // Return empty if the query is empty
                     if query.is_empty() {
-                        let _ = tx_result.send(vec![]);
+                        let _ = tx_result.send(EngineResult::Update(vec![]));
                         continue;
                     }
 
@@ -50,7 +55,7 @@ pub fn run_engine(
 }
 
 fn spawn_search(
-    tx_result: Sender<Vec<String>>,
+    tx_result: Sender<EngineResult>,
     max_list_size: u16,
     query: String,
     dir: String,

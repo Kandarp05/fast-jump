@@ -5,13 +5,13 @@ use crossbeam_channel::Sender;
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use ignore::WalkBuilder;
 
-use crate::engine::score;
+use crate::engine::{score, EngineResult};
 
 const MIN_SCORE_THRESHOLD: i64 = 10;
 
 pub fn search_disk(
     query: String,
-    tx_res: Sender<Vec<String>>,
+    tx_res: Sender<EngineResult>,
     kill_switch: Arc<AtomicBool>,
     dir: String,
     max_list_size: u16,
@@ -43,6 +43,8 @@ pub fn search_disk(
             );
         }
     }
+
+    let _ = tx_res.send(EngineResult::Done);
 }
 
 fn process_entry(
@@ -51,7 +53,7 @@ fn process_entry(
     query: &str,
     results: &mut Vec<(i64, String)>,
     max_list_size: u16,
-    tx_res: &Sender<Vec<String>>,
+    tx_res: &Sender<EngineResult>,
 ) {
     if let Some((raw_score, indices)) = matcher.fuzzy_indices(path, query) {
         let final_score = score::apply_heuristics(path, raw_score, &indices);
@@ -69,6 +71,6 @@ fn process_entry(
         results.truncate(max_list_size as usize);
 
         let top_results: Vec<String> = results.iter().map(|(_, p)| p.clone()).collect();
-        let _ = tx_res.send(top_results);
+        let _ = tx_res.send(EngineResult::Update(top_results));
     }
 }
