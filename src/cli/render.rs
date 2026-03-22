@@ -1,11 +1,12 @@
-use crate::app::App;
 use ratatui::{
-    Frame,
     layout::{Constraint, Direction, Layout},
     style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::Paragraph,
+    Frame,
 };
+
+use crate::app::App;
 
 pub fn draw(f: &mut Frame, app: &mut App) {
     // Max no. of results to show.

@@ -1,10 +1,11 @@
 mod score;
 mod walker;
 
-use crossbeam_channel::{Receiver, Sender};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::thread;
+
+use crossbeam_channel::{Receiver, Sender};
 
 pub enum EngineCommand {
     Search(String),

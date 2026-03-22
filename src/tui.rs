@@ -1,9 +1,10 @@
+use std::io::Stdout;
+
 use crossterm::cursor::Show;
 use crossterm::execute;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use ratatui::backend::CrosstermBackend;
 use ratatui::{Terminal, TerminalOptions, Viewport};
-use std::io::Stdout;
 
 pub struct Tui {
     pub terminal: Terminal<CrosstermBackend<Stdout>>,

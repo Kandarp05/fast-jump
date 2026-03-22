@@ -1,7 +1,8 @@
-use crate::app::App;
-use crate::engine::EngineCommand;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use tui_input::backend::crossterm::EventHandler;
+
+use crate::app::App;
+use crate::engine::EngineCommand;
 
 pub fn handle_events(app: &mut App) -> anyhow::Result<()> {
     let event = event::read()?;

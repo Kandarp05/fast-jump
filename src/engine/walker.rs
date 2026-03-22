@@ -1,10 +1,11 @@
-use crate::engine::score;
-use crossbeam_channel::Sender;
-use fuzzy_matcher::FuzzyMatcher;
-use fuzzy_matcher::skim::SkimMatcherV2;
-use ignore::WalkBuilder;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
+use crossbeam_channel::Sender;
+use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use ignore::WalkBuilder;
+
+use crate::engine::score;
 
 const MIN_SCORE_THRESHOLD: i64 = 10;
 

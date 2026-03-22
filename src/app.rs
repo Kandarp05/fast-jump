@@ -1,9 +1,10 @@
-use crate::cli;
-use crate::engine::EngineCommand;
-use crate::tui::Tui;
 use crossbeam_channel::{Receiver, Sender};
 use crossterm::event;
 use tui_input::Input;
+
+use crate::cli;
+use crate::engine::EngineCommand;
+use crate::tui::Tui;
 
 pub struct App {
     pub input: Input,

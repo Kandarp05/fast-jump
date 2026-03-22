@@ -3,13 +3,15 @@ mod cli;
 mod engine;
 mod tui;
 
-use crate::app::App;
-use crate::engine::{EngineCommand, run_engine};
-use crate::tui::Tui;
+use std::thread;
+
 use clap::Parser;
 use crossbeam_channel::unbounded;
 use crossterm::{cursor::Show, execute, terminal::disable_raw_mode};
-use std::thread;
+
+use crate::app::App;
+use crate::engine::{run_engine, EngineCommand};
+use crate::tui::Tui;
 
 const MAX_LIST_LENGTH: u16 = 20;
 
