@@ -1,6 +1,6 @@
 use crate::app::App;
 use crate::engine::EngineCommand;
-use crossterm::event::{self, Event, KeyCode, KeyEventKind};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use tui_input::backend::crossterm::EventHandler;
 
 pub fn handle_events(app: &mut App) -> anyhow::Result<()> {
@@ -8,19 +8,7 @@ pub fn handle_events(app: &mut App) -> anyhow::Result<()> {
     if let Event::Key(key) = event {
         let prev_query = app.input.value().to_string();
         if key.kind == KeyEventKind::Press {
-            match key.code {
-                KeyCode::Up => app.move_up(),
-                KeyCode::Down => app.move_down(),
-                KeyCode::Enter => {
-                    if !app.results.is_empty() && app.selected_i < app.results.len() {
-                        app.final_selection = Some(app.results[app.selected_i].clone());
-                    }
-                    app.should_exit = true;
-                }
-                _ => {
-                    app.input.handle_event(&Event::Key(key));
-                }
-            }
+            handle_key_press(key, app);
         }
 
         let new_query = app.input.value().to_string();
@@ -31,4 +19,20 @@ pub fn handle_events(app: &mut App) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn handle_key_press(key: KeyEvent, app: &mut App) {
+    match key.code {
+        KeyCode::Up => app.move_up(),
+        KeyCode::Down => app.move_down(),
+        KeyCode::Enter => {
+            if !app.results.is_empty() && app.selected_i < app.results.len() {
+                app.final_selection = Some(app.results[app.selected_i].clone());
+            }
+            app.should_exit = true;
+        }
+        _ => {
+            app.input.handle_event(&Event::Key(key));
+        }
+    }
 }

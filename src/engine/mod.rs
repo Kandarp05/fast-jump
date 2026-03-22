@@ -22,10 +22,7 @@ pub fn run_engine(
         if let Ok(cmd) = rx_cmd.recv() {
             match cmd {
                 EngineCommand::Search(query) => {
-                    // Kill all the prev worker threads
-                    if let Some(ks) = current_kill_switch.take() {
-                        ks.store(true, Ordering::Relaxed);
-                    }
+                    kill_active_search(&mut current_kill_switch);
 
                     // Return empty if the query is empty
                     if query.is_empty() {
@@ -33,29 +30,53 @@ pub fn run_engine(
                         continue;
                     }
 
-                    // New kill switch for the new search
-                    let kill_switch = Arc::new(AtomicBool::new(false));
-                    current_kill_switch = Some(Arc::clone(&kill_switch));
+                    let dir = resolve_search_directory(&search_space);
                     let tx_res_clone = tx_result.clone();
-
-                    // If no search space is provided, use the home directory
-                    let dir: String = search_space.clone().unwrap_or_else(|| {
-                        dirs::home_dir()
-                            .map(|p| p.to_string_lossy().to_string())
-                            .unwrap_or_else(|| ".".to_string())
-                    });
-
-                    thread::spawn(move || {
-                        walker::search_disk(query, tx_res_clone, kill_switch, dir, max_list_size);
-                    });
+                    current_kill_switch = Some(spawn_search(
+                        tx_res_clone,
+                        max_list_size,
+                        query,
+                        dir,
+                    ));
                 }
                 EngineCommand::Quit => {
-                    if let Some(ks) = current_kill_switch.take() {
-                        ks.store(true, Ordering::Relaxed);
-                    }
+                    kill_active_search(&mut current_kill_switch);
                     break;
                 }
             }
         }
+    }
+}
+
+fn spawn_search(
+    tx_result: Sender<Vec<String>>,
+    max_list_size: u16,
+    query: String,
+    dir: String,
+) -> Arc<AtomicBool> {
+    // New kill switch for the new search
+    let kill_switch = Arc::new(AtomicBool::new(false));
+    let kill_switch_clone = Arc::clone(&kill_switch);
+    thread::spawn(move || {
+        walker::search_disk(query, tx_result, kill_switch_clone, dir, max_list_size);
+    });
+
+    kill_switch
+}
+
+fn resolve_search_directory(search_space: &Option<String>) -> String {
+    // If no search space is provided, use the home directory
+    let dir: String = search_space.clone().unwrap_or_else(|| {
+        dirs::home_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| ".".to_string())
+    });
+    dir
+}
+
+fn kill_active_search(current_kill_switch: &mut Option<Arc<AtomicBool>>) {
+    // Kill all the prev worker threads
+    if let Some(ks) = current_kill_switch.take() {
+        ks.store(true, Ordering::Relaxed);
     }
 }

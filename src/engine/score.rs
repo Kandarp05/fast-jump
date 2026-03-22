@@ -31,10 +31,8 @@ pub fn apply_heuristics(path: &str, raw_score: i64, indices: &[usize]) -> i64 {
 
 pub fn is_redundant(path: &str, score: i64, current_results: &[(i64, String)]) -> bool {
     for (existing_score, existing_path) in current_results {
-        if path.starts_with(existing_path) {
-            if score <= existing_score + CHILD_OVERRIDE_MARGIN {
-                return true;
-            }
+        if path.starts_with(existing_path) && score <= existing_score + CHILD_OVERRIDE_MARGIN {
+            return true;
         }
     }
     false
