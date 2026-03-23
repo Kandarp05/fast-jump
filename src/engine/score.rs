@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 const DEPTH_PENALTY: i64 = 3;
 const CHILD_OVERRIDE_MARGIN: i64 = 25;
 const ACRONYM_BONUS: i64 = 15;
@@ -29,11 +31,29 @@ pub fn apply_heuristics(path: &str, raw_score: i64, indices: &[usize]) -> i64 {
     raw_score - depth_penalty + boundary_bonus
 }
 
-pub fn is_redundant(path: &str, score: i64, current_results: &[(i64, String)]) -> bool {
-    for (existing_score, existing_path) in current_results {
-        if path.starts_with(existing_path) && score <= existing_score + CHILD_OVERRIDE_MARGIN {
+pub fn build_parent_set(current_results: &[(i64, String)]) -> HashSet<&str> {
+    current_results
+        .iter()
+        .map(|(_, path)| path.as_str())
+        .collect()
+}
+
+pub fn is_redundant(
+    path: &str,
+    score: i64,
+    current_results: &[(i64, String)],
+    parents: &HashSet<&str>,
+) -> bool {
+    for parent_path in parents {
+        if path.starts_with(parent_path)
+            && let Some((parent_score, _)) = current_results
+                .iter()
+                .find(|(_, p)| p.as_str() == *parent_path)
+            && score <= parent_score + CHILD_OVERRIDE_MARGIN
+        {
             return true;
         }
     }
+
     false
 }

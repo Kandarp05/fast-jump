@@ -51,8 +51,11 @@ impl App {
         loop {
             tui.terminal.draw(|f| cli::render::draw(f, self))?;
 
-            let mut received_new_res = false;
-            while let Ok(new_res) = self.rx_res.try_recv() {
+            if event::poll(std::time::Duration::from_millis(50))? {
+                cli::events::handle_events(self)?;
+            }
+
+            if let Ok(new_res) = self.rx_res.try_recv() {
                 match new_res {
                     EngineResult::Update(res) => {
                         self.results = res;
@@ -61,15 +64,6 @@ impl App {
                 }
 
                 self.clamp_selection();
-                received_new_res = true;
-            }
-
-            if received_new_res {
-                continue;
-            }
-
-            if event::poll(std::time::Duration::from_millis(50))? {
-                cli::events::handle_events(self)?;
             }
 
             if self.should_exit {

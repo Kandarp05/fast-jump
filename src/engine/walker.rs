@@ -1,6 +1,7 @@
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use ignore::{DirEntry, WalkBuilder, WalkState};
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
@@ -100,32 +101,45 @@ fn spawn_aggregator(
     thread::spawn(move || {
         let mut top_results: Vec<(i64, String)> = Vec::new();
         let mut last_update = std::time::Instant::now();
+        let mut parent_set = HashSet::new();
 
         while let Ok((score, path)) = rx_worker.recv() {
             if kill_switch.load(Ordering::Relaxed) {
                 return;
             }
 
-            if score < MIN_SCORE_THRESHOLD && score::is_redundant(&path, score, &top_results) {
+            if score < MIN_SCORE_THRESHOLD
+                && score::is_redundant(&path, score, &top_results, &parent_set)
+            {
                 continue;
             }
 
             top_results.push((score, path));
             top_results.sort_unstable_by(compare_scored_paths);
-
             top_results.truncate(max_list_size as usize);
 
+            parent_set = score::build_parent_set(&top_results);
+
             if last_update.elapsed() > UPDATE_INTERVAL {
-                let paths: Vec<String> = top_results.iter().map(|(_, p)| p.clone()).collect();
-                let _ = tx_res.send(EngineResult::Update(paths));
+                if tx_res
+                    .send(EngineResult::Update(collect_paths(&top_results)))
+                    .is_err()
+                {
+                    kill_switch.store(true, Ordering::Relaxed);
+                    return;
+                }
                 last_update = std::time::Instant::now();
             }
         }
 
         // Final payload delivery
         if !kill_switch.load(Ordering::Relaxed) {
-            let paths: Vec<String> = top_results.iter().map(|(_, p)| p.clone()).collect();
-            let _ = tx_res.send(EngineResult::Update(paths));
+            if tx_res
+                .send(EngineResult::Update(collect_paths(&top_results)))
+                .is_err()
+            {
+                kill_switch.store(true, Ordering::Relaxed);
+            }
         }
     })
 }
@@ -135,4 +149,8 @@ fn compare_scored_paths(a: &ScoredPath, b: &ScoredPath) -> std::cmp::Ordering {
         std::cmp::Ordering::Equal => a.1.len().cmp(&b.1.len()),
         other => other,
     }
+}
+
+fn collect_paths(results: &[ScoredPath]) -> Vec<String> {
+    results.iter().map(|(_, path)| path.clone()).collect()
 }
