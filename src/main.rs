@@ -10,7 +10,7 @@ use crossbeam_channel::unbounded;
 use crossterm::{cursor::Show, execute, terminal::disable_raw_mode};
 
 use crate::app::App;
-use crate::engine::{run_engine, EngineCommand, EngineResult};
+use crate::engine::{EngineCommand, EngineResult, run_engine};
 use crate::tui::Tui;
 
 const MAX_LIST_LENGTH: u16 = 20;
@@ -61,7 +61,9 @@ pub fn run() -> anyhow::Result<()> {
 
     // Dispatch
     if args.headless {
-        let query = args.query.ok_or_else(|| anyhow::anyhow!("--query is required in headless mode"))?;
+        let query = args
+            .query
+            .ok_or_else(|| anyhow::anyhow!("--query is required in headless mode"))?;
         start_headless_session(query, tx_cmd, rx_res)
     } else {
         start_tui_session(tx_cmd, rx_res)

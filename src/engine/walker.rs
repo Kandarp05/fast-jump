@@ -1,13 +1,17 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use crossbeam_channel::{Receiver, Sender, unbounded};
+use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
+use ignore::{DirEntry, WalkBuilder, WalkState};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread;
+use std::thread::JoinHandle;
+use std::time::Duration;
 
-use crossbeam_channel::Sender;
-use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
-use ignore::WalkBuilder;
-
-use crate::engine::{score, EngineResult};
+use crate::engine::{EngineResult, score};
 
 const MIN_SCORE_THRESHOLD: i64 = 10;
+const UPDATE_INTERVAL: Duration = Duration::from_millis(25);
+type ScoredPath = (i64, String);
 
 pub fn search_disk(
     query: String,
@@ -16,61 +20,119 @@ pub fn search_disk(
     dir: String,
     max_list_size: u16,
 ) {
-    let matcher = SkimMatcherV2::default();
-    let mut results: Vec<(i64, String)> = Vec::new();
+    // Worker threads will send their results to this channel
+    let (tx_worker, rx_worker) = unbounded::<(i64, String)>();
+
+    // Spawn a thread to collect the results
+    let aggregator_handle = spawn_aggregator(
+        rx_worker,
+        tx_res.clone(),
+        kill_switch.clone(),
+        max_list_size,
+    );
+
+    // Configure the crawler
     let walker = WalkBuilder::new(&dir)
         .hidden(true)
         .parents(true)
         .ignore(true)
-        .build();
+        .build_parallel();
 
-    for result in walker {
-        if kill_switch.load(Ordering::Relaxed) {
-            return;
-        }
+    walker.run(|| {
+        let tx_worker_clone = tx_worker.clone();
+        let query_clone = query.clone();
+        let kill_switch_clone = kill_switch.clone();
+        let matcher = SkimMatcherV2::default();
 
-        if let Ok(entry) = result
-            && entry.file_type().is_some_and(|f| f.is_dir())
-        {
-            let path = entry.path().to_string_lossy().to_string();
-            process_entry(
-                &matcher,
-                &path,
-                &query,
-                &mut results,
-                max_list_size,
-                &tx_res,
-            );
-        }
+        Box::new(move |result| {
+            if kill_switch_clone.load(Ordering::Relaxed) {
+                return WalkState::Quit;
+            }
+
+            if let Ok(entry) = result {
+                process_single_entry(&entry, &query_clone, &matcher, &tx_worker_clone);
+            }
+
+            WalkState::Continue
+        })
+    });
+
+    drop(tx_worker);
+    let _ = aggregator_handle.join();
+
+    if !kill_switch.load(Ordering::Relaxed) {
+        let _ = tx_res.send(EngineResult::Done);
     }
-
-    let _ = tx_res.send(EngineResult::Done);
 }
 
-fn process_entry(
-    matcher: &SkimMatcherV2,
-    path: &str,
+fn process_single_entry(
+    entry: &DirEntry,
     query: &str,
-    results: &mut Vec<(i64, String)>,
-    max_list_size: u16,
-    tx_res: &Sender<EngineResult>,
+    matcher: &SkimMatcherV2,
+    tx_worker: &Sender<(i64, String)>,
 ) {
-    if let Some((raw_score, indices)) = matcher.fuzzy_indices(path, query) {
-        let final_score = score::apply_heuristics(path, raw_score, &indices);
+    // Must be a directory
+    if !entry.file_type().is_some_and(|f| f.is_dir()) {
+        return;
+    }
 
-        if final_score < MIN_SCORE_THRESHOLD && score::is_redundant(path, final_score, results) {
-            return;
+    // Must be a valid UTF-8 path
+    let Some(path_str) = entry.path().to_str() else {
+        return;
+    };
+
+    if let Some((raw_score, indices)) = matcher.fuzzy_indices(path_str, query) {
+        let final_score = score::apply_heuristics(path_str, raw_score, &indices);
+
+        // Just send anything that is not completely useless
+        if final_score > 0 {
+            let _ = tx_worker.send((final_score, path_str.to_string()));
+        }
+    }
+}
+
+fn spawn_aggregator(
+    rx_worker: Receiver<(i64, String)>,
+    tx_res: Sender<EngineResult>,
+    kill_switch: Arc<AtomicBool>,
+    max_list_size: u16,
+) -> JoinHandle<()> {
+    thread::spawn(move || {
+        let mut top_results: Vec<(i64, String)> = Vec::new();
+        let mut last_update = std::time::Instant::now();
+
+        while let Ok((score, path)) = rx_worker.recv() {
+            if kill_switch.load(Ordering::Relaxed) {
+                return;
+            }
+
+            if score < MIN_SCORE_THRESHOLD && score::is_redundant(&path, score, &top_results) {
+                continue;
+            }
+
+            top_results.push((score, path));
+            top_results.sort_unstable_by(compare_scored_paths);
+
+            top_results.truncate(max_list_size as usize);
+
+            if last_update.elapsed() > UPDATE_INTERVAL {
+                let paths: Vec<String> = top_results.iter().map(|(_, p)| p.clone()).collect();
+                let _ = tx_res.send(EngineResult::Update(paths));
+                last_update = std::time::Instant::now();
+            }
         }
 
-        results.push((final_score, path.to_string()));
-        results.sort_unstable_by(|a, b| match b.0.cmp(&a.0) {
-            std::cmp::Ordering::Equal => a.1.len().cmp(&b.1.len()),
-            o => o,
-        });
+        // Final payload delivery
+        if !kill_switch.load(Ordering::Relaxed) {
+            let paths: Vec<String> = top_results.iter().map(|(_, p)| p.clone()).collect();
+            let _ = tx_res.send(EngineResult::Update(paths));
+        }
+    })
+}
 
-        results.truncate(max_list_size as usize);
-
-        let top_results: Vec<String> = results.iter().map(|(_, p)| p.clone()).collect();
-        let _ = tx_res.send(EngineResult::Update(top_results));
+fn compare_scored_paths(a: &ScoredPath, b: &ScoredPath) -> std::cmp::Ordering {
+    match b.0.cmp(&a.0) {
+        std::cmp::Ordering::Equal => a.1.len().cmp(&b.1.len()),
+        other => other,
     }
 }

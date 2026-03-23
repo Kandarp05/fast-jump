@@ -1,8 +1,8 @@
 mod score;
 mod walker;
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 use crossbeam_channel::{Receiver, Sender};
@@ -38,12 +38,8 @@ pub fn run_engine(
 
                     let dir = resolve_search_directory(&search_space);
                     let tx_res_clone = tx_result.clone();
-                    current_kill_switch = Some(spawn_search(
-                        tx_res_clone,
-                        max_list_size,
-                        query,
-                        dir,
-                    ));
+                    current_kill_switch =
+                        Some(spawn_search(tx_res_clone, max_list_size, query, dir));
                 }
                 EngineCommand::Quit => {
                     kill_active_search(&mut current_kill_switch);
