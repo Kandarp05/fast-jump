@@ -13,7 +13,7 @@ use crate::app::App;
 use crate::engine::{EngineCommand, EngineResult, run_engine};
 use crate::tui::Tui;
 
-const MAX_LIST_LENGTH: u16 = 20;
+const MAX_LIST_LENGTH: u16 = 10;
 
 #[derive(Parser)]
 struct Args {
