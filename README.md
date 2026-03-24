@@ -2,6 +2,8 @@
 
 A blazing-fast directory jumper written in Rust. `fj` helps you navigate your filesystem efficiently using fuzzy search and a TUI interface.
 
+![demo](demo.gif)
+
 ## Features
 
 - 🚀 **Fast**: Powered by multithreading and the `skim` fuzzy matching algorithm.

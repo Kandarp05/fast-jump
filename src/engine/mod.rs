@@ -1,3 +1,4 @@
+pub(crate) mod db;
 mod score;
 mod walker;
 
@@ -5,6 +6,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
+use crate::engine::db::FrecencyDB;
 use crossbeam_channel::{Receiver, Sender};
 
 pub enum EngineCommand {
@@ -21,6 +23,7 @@ pub fn run_engine(
     rx_cmd: Receiver<EngineCommand>,
     tx_result: Sender<EngineResult>,
     search_space: Option<String>,
+    db: FrecencyDB,
     max_list_size: u16,
 ) {
     let mut current_kill_switch: Option<Arc<AtomicBool>> = None;
@@ -38,8 +41,13 @@ pub fn run_engine(
 
                     let dir = resolve_search_directory(&search_space);
                     let tx_res_clone = tx_result.clone();
-                    current_kill_switch =
-                        Some(spawn_search(tx_res_clone, max_list_size, query, dir));
+                    current_kill_switch = Some(spawn_search(
+                        tx_res_clone,
+                        max_list_size,
+                        query,
+                        dir,
+                        db.clone(),
+                    ));
                 }
                 EngineCommand::Quit => {
                     kill_active_search(&mut current_kill_switch);
@@ -55,12 +63,13 @@ fn spawn_search(
     max_list_size: u16,
     query: String,
     dir: String,
+    db: FrecencyDB,
 ) -> Arc<AtomicBool> {
     // New kill switch for the new search
     let kill_switch = Arc::new(AtomicBool::new(false));
     let kill_switch_clone = Arc::clone(&kill_switch);
     thread::spawn(move || {
-        walker::search_disk(query, tx_result, kill_switch_clone, dir, max_list_size);
+        walker::search_disk(query, tx_result, kill_switch_clone, dir, &db, max_list_size);
     });
 
     kill_switch

@@ -10,7 +10,8 @@ use crossbeam_channel::unbounded;
 use crossterm::{cursor::Show, execute, terminal::disable_raw_mode};
 
 use crate::app::App;
-use crate::engine::{EngineCommand, EngineResult, run_engine};
+use crate::engine::db::FrecencyDB;
+use crate::engine::{EngineCommand, EngineResult, db, run_engine};
 use crate::tui::Tui;
 
 const MAX_LIST_LENGTH: u16 = 10;
@@ -54,9 +55,12 @@ pub fn run() -> anyhow::Result<()> {
     let (tx_cmd, rx_cmd) = unbounded();
     let (tx_res, rx_res) = unbounded();
 
+    let db = db::load_db();
+    let engine_db = db.clone();
+
     // Spawn the Engine (Shared by both modes)
     thread::spawn(move || {
-        run_engine(rx_cmd, tx_res, args.dir, MAX_LIST_LENGTH);
+        run_engine(rx_cmd, tx_res, args.dir, engine_db, MAX_LIST_LENGTH);
     });
 
     // Dispatch
@@ -66,13 +70,14 @@ pub fn run() -> anyhow::Result<()> {
             .ok_or_else(|| anyhow::anyhow!("--query is required in headless mode"))?;
         start_headless_session(query, tx_cmd, rx_res)
     } else {
-        start_tui_session(tx_cmd, rx_res)
+        start_tui_session(tx_cmd, rx_res, db)
     }
 }
 
 fn start_tui_session(
     tx_cmd: crossbeam_channel::Sender<EngineCommand>,
-    rx_res: crossbeam_channel::Receiver<crate::engine::EngineResult>,
+    rx_res: crossbeam_channel::Receiver<EngineResult>,
+    db: FrecencyDB,
 ) -> anyhow::Result<()> {
     // Initialize
     let mut app = App::new(rx_res, tx_cmd.clone(), MAX_LIST_LENGTH);
@@ -86,8 +91,11 @@ fn start_tui_session(
     tui.terminal.clear()?;
     drop(tui);
 
-    // Output
     if let Some(path) = app.final_selection {
+        // Update the frecency map with the selected path and save it
+        db::update_and_save_db(db, path.clone());
+
+        // Print the output and also save it to a temporary file
         println!("{}", path);
         let temp_file = std::env::temp_dir().join("fj_target");
         std::fs::write(&temp_file, path)?;

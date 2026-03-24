@@ -8,7 +8,8 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use crate::engine::{EngineResult, score};
+use crate::engine::db::FrecencyDB;
+use crate::engine::{EngineResult, db, score};
 
 const MIN_SCORE_THRESHOLD: i64 = 10;
 const UPDATE_INTERVAL: Duration = Duration::from_millis(25);
@@ -19,6 +20,7 @@ pub fn search_disk(
     tx_res: Sender<EngineResult>,
     kill_switch: Arc<AtomicBool>,
     dir: String,
+    db: &FrecencyDB,
     max_list_size: u16,
 ) {
     // Worker threads will send their results to this channel
@@ -31,6 +33,8 @@ pub fn search_disk(
         kill_switch.clone(),
         max_list_size,
     );
+
+    db::calc_based_on_frecency(db, &query, &tx_worker);
 
     // Configure the crawler
     let walker = WalkBuilder::new(&dir)
@@ -102,10 +106,15 @@ fn spawn_aggregator(
         let mut top_results: Vec<(i64, String)> = Vec::new();
         let mut last_update = std::time::Instant::now();
         let mut parent_set = HashSet::new();
+        let mut seen_path = HashSet::new();
 
         while let Ok((score, path)) = rx_worker.recv() {
             if kill_switch.load(Ordering::Relaxed) {
                 return;
+            }
+
+            if !seen_path.insert(path.clone()) {
+                continue;
             }
 
             if score < MIN_SCORE_THRESHOLD

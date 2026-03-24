@@ -496,6 +496,8 @@ dependencies = [
  "fuzzy-matcher",
  "ignore",
  "ratatui",
+ "serde",
+ "serde_json",
  "tui-input",
 ]
 
