@@ -7,6 +7,7 @@ use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fs;
 use std::time::{Duration, SystemTime};
+use crate::engine::score;
 
 // Max possible size of the database
 const MAX_DB_SIZE: usize = 750;
@@ -70,12 +71,12 @@ pub fn calc_based_on_frecency(db: &FrecencyDB, query: &str, tx_worker: &Sender<(
         .as_secs();
 
     for (path, entry) in db {
-        if let Some((raw_score, _)) = matcher.fuzzy_indices(path, query) {
+        if let Some((raw_score, indices)) = matcher.fuzzy_indices(path, query) {
             let frecency_rank = calculate_frecency_rank(entry, &now);
-
+            let heuristic_score = score::apply_heuristics(path, raw_score, &indices);
             let bonus = (frecency_rank as i64) * MAX_FRECENCY_BONUS / 100;
-            let score = raw_score + bonus;
 
+            let score = heuristic_score + bonus;
             let _ = tx_worker.send((score, path.clone()));
         }
     }
@@ -89,10 +90,10 @@ fn calculate_frecency_rank(entry: &FrecencyEntry, now: &u64) -> u64 {
         WEIGHT_HOUR
     } else if age_sec < TIME_ONE_DAY {
         WEIGHT_DAY
-    } else if age_sec < TIME_ONE_MONTH {
-        WEIGHT_MONTH
     } else if age_sec < TIME_ONE_WEEK {
         WEIGHT_WEEK
+    } else if age_sec < TIME_ONE_MONTH {
+        WEIGHT_MONTH
     } else {
         WEIGHT_OLDER
     };

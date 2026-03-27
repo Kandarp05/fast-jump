@@ -83,6 +83,8 @@ fn start_tui_session(
     let mut app = App::new(rx_res, tx_cmd.clone(), MAX_LIST_LENGTH);
     let mut tui = Tui::init(MAX_LIST_LENGTH)?;
 
+    tx_cmd.send(EngineCommand::Search(String::new()))?;
+
     // Run Loop
     app.run_event_loop(&mut tui)?;
 

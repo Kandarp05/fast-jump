@@ -33,12 +33,6 @@ pub fn run_engine(
                 EngineCommand::Search(query) => {
                     kill_active_search(&mut current_kill_switch);
 
-                    // Return empty if the query is empty
-                    if query.is_empty() {
-                        let _ = tx_result.send(EngineResult::Update(vec![]));
-                        continue;
-                    }
-
                     let dir = resolve_search_directory(&search_space);
                     let tx_res_clone = tx_result.clone();
                     current_kill_switch = Some(spawn_search(

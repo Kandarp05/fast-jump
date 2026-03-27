@@ -26,6 +26,7 @@ fn handle_key_press(key: KeyEvent, app: &mut App) {
     match key.code {
         KeyCode::Up => app.move_up(),
         KeyCode::Down => app.move_down(),
+        KeyCode::Esc => app.should_exit = true,
         KeyCode::Enter => {
             if !app.results.is_empty() && app.selected_i < app.results.len() {
                 app.final_selection = Some(app.results[app.selected_i].clone());
