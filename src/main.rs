@@ -1,6 +1,7 @@
 mod app;
 mod cli;
 mod engine;
+mod tty_redirect;
 mod tui;
 
 use std::thread;
@@ -97,10 +98,8 @@ fn start_tui_session(
         // Update the frecency map with the selected path and save it
         db::update_and_save_db(db, path.clone());
 
-        // Print the output and also save it to a temporary file
-        println!("{}", path);
-        let temp_file = std::env::temp_dir().join("fj_target");
-        std::fs::write(&temp_file, path)?;
+        // Emit only the selected path on stdout so shell wrappers can capture it safely.
+        println!("{path}");
     }
 
     Ok(())

@@ -1,6 +1,5 @@
 use crossbeam_channel::{Receiver, Sender};
 use crossterm::event;
-use crossterm::event::Event;
 use tui_input::Input;
 
 use crate::cli;
@@ -51,7 +50,6 @@ impl App {
     pub fn run_event_loop(&mut self, tui: &mut Tui) -> anyhow::Result<()> {
         loop {
             tui.terminal.draw(|f| cli::render::draw(f, self))?;
-
 
             if event::poll(std::time::Duration::from_millis(10))? {
                 cli::events::handle_events(self)?;

@@ -35,14 +35,11 @@ Add the following function to your `~/.bashrc` or `~/.zshrc`:
 
 ```bash
 function fj() {
-    ~/.cargo/bin/fj "$@"
-    local temp_file="/tmp/fj_target"
-    if [ -f "$temp_file" ]; then
-        local target_dir=$(cat "$temp_file")
-        if [ -d "$target_dir" ]; then
-            cd "$target_dir"
-        fi
-        rm -f "$temp_file"
+    local target_dir
+    target_dir="$(command fj "$@")" || return
+
+    if [[ -n "$target_dir" && -d "$target_dir" ]]; then
+        builtin cd -- "$target_dir"
     fi
 }
 ```

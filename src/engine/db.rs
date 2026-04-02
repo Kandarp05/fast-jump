@@ -1,3 +1,4 @@
+use crate::engine::score;
 use crossbeam_channel::Sender;
 use dirs::data_local_dir;
 use fuzzy_matcher::FuzzyMatcher;
@@ -7,7 +8,6 @@ use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fs;
 use std::time::{Duration, SystemTime};
-use crate::engine::score;
 
 // Max possible size of the database
 const MAX_DB_SIZE: usize = 750;
