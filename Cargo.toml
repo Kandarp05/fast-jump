@@ -2,6 +2,11 @@
 name = "fast-jump"
 version = "0.1.0"
 edition = "2024"
+description = "A blazing-fast fuzzy directory jumper"
+repository = "https://github.com/Kandarp05/fast-jump"
+license = "MIT"
+keywords = ["cli", "directory", "navigation", "fuzzy", "tui"]
+categories = ["command-line-utilities"]
 
 [[bin]]
 name = "fj"
