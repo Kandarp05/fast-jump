@@ -6,10 +6,10 @@ A blazing-fast directory jumper written in Rust. `fj` helps you navigate your fi
 
 ## Features
 
-- 🚀 **Fast**: Powered by multithreading and the `skim` fuzzy matching algorithm.
-- 🔍 **Smart**: Respects `.gitignore` and hidden files (via `ignore` crate).
-- 🖥️ **Interactive**: Clean TUI using `ratatui` and `crossterm`.
-- ⌨️ **Simple**: Just type to search, Arrow keys to navigate, Enter to jump.
+- **Fast**: Powered by multithreading and the `skim` fuzzy matching algorithm.
+- **Smart**: Respects `.gitignore` and hidden files (via `ignore` crate).
+- **Interactive**: Clean TUI using `ratatui` and `crossterm`.
+- **Simple**: Type `fj` -> `Enter` -> `start typing` to search for directories.
 
 ## Installation
 
@@ -27,12 +27,12 @@ The binary will be installed to `~/.cargo/bin/fj` (make sure `~/.cargo/bin` is i
 
 ## Usage
 
-`fj` is designed to work with a shell wrapper function to change your directory automatically.
+`fj` is designed to work with a shell wrapper function to change your directory automatically. 
+The program prints the directory to `stdout`, the wrapper function then changes your directory to that directory.
 
 ### Shell Wrapper (Bash / Zsh)
 
 Add the following function to your `~/.bashrc` or `~/.zshrc`:
-
 ```bash
 function fj() {
     local target_dir
