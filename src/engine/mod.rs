@@ -35,10 +35,11 @@ pub fn run_engine(
 
                     let dir = resolve_search_directory(&search_space);
                     let tx_res_clone = tx_result.clone();
+                    let normalize_query = normalize_query(&query);
                     current_kill_switch = Some(spawn_search(
                         tx_res_clone,
                         max_list_size,
-                        query,
+                        normalize_query,
                         dir,
                         db.clone(),
                     ));
@@ -50,6 +51,10 @@ pub fn run_engine(
             }
         }
     }
+}
+
+pub fn normalize_query(query: &str) -> String {
+    query.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 fn spawn_search(
